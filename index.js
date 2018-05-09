@@ -25,28 +25,35 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
-  console.log('request to /');
-  res.send('it works');
+  res.send('success');
 });
 
 app.post('/get-markers', (req, res) => {
+  const {southWest, northEast} = req.body.bounds;
+
+  // Check to make sure that the frontend is sending coords
+  if (!southWest || !northEast) {
+    return res.status(500).send('no coordinates provided');
+  }
+
   const collection = dbo.collection('locations');
-  // collection.find({
-  //   geo: {
-  //     $geoWithin: {
-  //       $geometry: {
-  //         type: 'Polygon',
-  //         coordinates: [[[0, 0], [3, 6], [6, 1], [0, 0]]],
-  //       },
-  //     },
-  //   },
-  // });
-  const objs = collection.find({}).toArray((err, result) => {
-    if (err) {
-      return res.json({error: 'could not get locations'});
-    }
-    res.json(result);
-  });
+  const objs = collection
+    .find({
+      geo: {
+        $geoWithin: {
+          $box: [
+            [southWest.lng, southWest.lat],
+            [northEast.lng, northEast.lat],
+          ],
+        },
+      },
+    })
+    .toArray((err, result) => {
+      if (err) {
+        return res.json({error: 'could not get locations'});
+      }
+      res.json(result);
+    });
 });
 
 app.listen(port, () => {
